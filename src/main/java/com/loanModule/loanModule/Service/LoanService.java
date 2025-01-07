@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.loanModule.loanModule.Dao.CustomerDAO;
+import com.loanModule.loanModule.Dao.EmployeeStatus;
 import com.loanModule.loanModule.Dao.ResponseEligibility;
 import com.loanModule.loanModule.Entity.Customer;
 import com.loanModule.loanModule.Entity.LoanDetails;
@@ -26,6 +27,8 @@ public class LoanService {
 
 	@Autowired
 	private CustomerRepository customerRepository;
+	
+	private EmployeeStatus employmentStatus;
 
 	// creating a logger
     Logger logger
@@ -45,7 +48,7 @@ public class LoanService {
 	    Optional<Customer> customerOptional = customerRepository.findById(customerDao.getCustomerId());
 	    if (!customerOptional.isPresent()) {
 	        newResponse.setIsApproved("Rejected");
-	        newResponse.setResponseMessages("You are not an existing customer.");
+	        newResponse.setResponseMessages("\nYou are not an existing customer.");
 	        return newResponse;
 	    }
 
@@ -58,13 +61,13 @@ public class LoanService {
 	    // 1. Minimum Credit Score
 	    if (customerDao.getCreditScore() < 650) {
 	        eligible = false;
-	        rejectionReasons.append("Credit score below 650. ");
+	        rejectionReasons.append("\nCredit score below 650. ");
 	    }
 
 	    // 2. Outstanding Loan Limit
 	    if (customerDao.getTotalDebt() > 10000) {
 	        eligible = false;
-	        rejectionReasons.append("Outstanding loans exceed $10,000. ");
+	        rejectionReasons.append("\nOutstanding loans exceed $10,000. ");
 	    }
 
 	    // 3. Income-to-Debt Ratio (IDR)
@@ -72,24 +75,31 @@ public class LoanService {
 	    double idr = customerDao.getTotalDebt() / yearlyIncome;
 	    if (idr >= 0.40) {
 	        eligible = false;
-	        rejectionReasons.append("Income-to-Debt Ratio exceeds 40%. ");
+	        rejectionReasons.append("\nIncome-to-Debt Ratio exceeds 40%. ");
 	    }
-
 	    // 4. Employment Status
-	    if ("Unemployed".equalsIgnoreCase(customerDao.getEmploymentStatus())) {
+    
+	    try {
+	        employmentStatus = EmployeeStatus.valueOf(customerDao.getEmploymentStatus().toUpperCase());
+	    } catch (IllegalArgumentException | NullPointerException e) {
 	        eligible = false;
-	        rejectionReasons.append("Employment status is Unemployed. ");
+	        rejectionReasons.append("\nInvalid employment status provided. ");
 	    }
-
+       
+	    if (!employmentStatus.isEligible()) {
+	        eligible = false;
+	        rejectionReasons.append("Employment status is ").append(employmentStatus).append(". \n");
+	    }
+	    
 	    // 5. Account Age Check (1 year minimum)
 	    LocalDate currentDate = LocalDate.now();  // Define currentDate as the current date
-	    Optional<LoanDetails> loanDetailsOptional = loanDetailsRepo.findByCustomer_CustomerId(customerDao.getCustomerId());
+	    Optional<LoanDetails> loanDetailsOptional = loanDetailsRepo.findTopByCustomer_CustomerIdOrderByAccountCreationDateDesc(customerDao.getCustomerId());
 	    if (loanDetailsOptional.isPresent()) {
 	    LocalDate accountCreatedDate = loanDetailsOptional.get().getAccountCreationDate(); // customer.getAccountCreationDate();  // Already LocalDate
 	    long accountAgeInMonths = ChronoUnit.MONTHS.between(accountCreatedDate, currentDate);
 	    if (accountAgeInMonths < 12) {
 	        eligible = false;
-	        rejectionReasons.append("Account age is less than 1 year. ");
+	        rejectionReasons.append("\nAccount age is less than 1 year. ");
 	    }
 	    }
 	    // Prepare LoanDetails object

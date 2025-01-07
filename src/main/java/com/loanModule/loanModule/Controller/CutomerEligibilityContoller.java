@@ -44,8 +44,7 @@ public class CutomerEligibilityContoller {
 	// Check loan eligibility
 	 @PostMapping("/eligibility")
 	    public ResponseEntity<ResponseEligibility> checkLoanEligibility(@RequestBody CustomerDAO customerData) {
-	        try {
-	        	
+	        	        	
 	        	 logger.trace("Checking loan eligibility for: your at controller " + customerData.getCustomerId());
 	        	 logger.trace("Checking loan eligibility for: your at controller " + customerData.getCreditScore());
 	        	 logger.trace("Checking loan eligibility for: your at controller " + customerData.getTotalDebt());
@@ -61,10 +60,7 @@ public class CutomerEligibilityContoller {
 	            	System.out.println(response.getResponseMessages());
 	                return ResponseEntity.ok(response);
 	            }
-	        } catch (Exception e) {
-	            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-	                    .body(null); // Return HTTP 500 for unexpected errors
-	        }
+	       
 	    }
 	
 	 
